@@ -25,10 +25,10 @@ const registerUser = async (req, res) => {
 }
 
 const loginUser = async (req, res) => {
-  const { email, password } = req.body
+  const { username, password } = req.body
   const salt = await bcrypt.genSalt(10)
   try {
-    const userLogin = await userModel.findOne({ email: email })
+    const userLogin = await userModel.findOne({ email: username })
     if (userLogin) {
       //compare password input with password in database
       const verify = await bcrypt.compare(password, userLogin.password)

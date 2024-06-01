@@ -1,13 +1,14 @@
-const mongoose = require( 'mongoose')
-const cloudinary = require( '../cloudinary/cloudinary.js')
-const productModel = require( '../models/productModel.js')
-const userModel = require( '../models/userModel.js')
-const { v4: uuid } = require('uuid');
-const OrderModel = require( '../models/order.js')
+const mongoose = require('mongoose')
+const cloudinary = require('../cloudinary/cloudinary.js')
+const productModel = require('../models/productModel.js')
+const cartsModel = require('../models/cartsModel.js')
+const userModel = require('../models/userModel.js')
+const { v4: uuid } = require('uuid')
+const OrderModel = require('../models/orderModel.js')
 
 // Create Product
 const createProduct = async (req, res) => {
-  const { title, image, description, price, number, category } = req.body
+  const { title, image, description, price, stock, category } = req.body
   try {
     if (image) {
       const result = await cloudinary.uploader.upload(image, {
@@ -18,7 +19,7 @@ const createProduct = async (req, res) => {
         title,
         description,
         price,
-        number,
+        stock,
         image: { public_id: result.public_id, url: result.secure_url },
         category,
       })
@@ -36,12 +37,12 @@ const createProduct = async (req, res) => {
 
 // Update Product
 const updateProduct = async (req, res) => {
-  const { productId, title, description, price, number, category } = req.body
+  const { productId, title, description, price, stock, category } = req.body
   try {
     // const newProduct = new productModel(req.body)
     const product = await productModel.findByIdAndUpdate(
       productId,
-      { title, description, price, number, category },
+      { title, description, price, stock, category },
       { new: true },
     )
     // await newProduct.save()
@@ -120,24 +121,41 @@ const getProduct = async (req, res) => {
 
 // Thêm vào giỏ hàng
 const addProductToCart = async (req, res) => {
-  const { productId, userId, title, number, price } = req.body
+  const { productId, userId, quantity } = req.body
   try {
     const product = await productModel.findById(productId)
-    if (product.number > number) {
-      const user = await userModel.findById(userId)
-      // thêm id sản phẩm vào trường cart
-      const newUser = await user.updateOne({
-        $push: {
-          cart: {
-            id: uuid(),
-            productId: productId,
-            title: title,
-            number: number,
-            price: price,
-          },
-        },
+    if (!product) {
+      return res.status(400).json('Không tồn tại sản phẩm')
+    }
+    // Kiểm tra xem giỏ hàng "active" của người dùng có tồn tại không
+    let cart = await cartsModel.findOne({ userId: userId, status: 'active' })
+
+    // Nếu không có giỏ hàng "active", tạo giỏ hàng mới
+    if (!cart) {
+      cart = new cartsModel({
+        userId: userId,
+        items: [],
+        status: 'active',
       })
-      await product.updateOne({ number: product.number - number })
+    }
+    //  Kiểm tra sản phẩm còn trong kho không
+    if (product.stock > quantity) {
+      // Kiểm tra xem sản phẩm đã có trong giỏ hàng chưa
+      const itemIndex = cart.items.findIndex(
+        (item) => item.productId.toString() === productId,
+      )
+      if (itemIndex > -1) {
+        // Nếu sản phẩm đã có trong giỏ hàng, cập nhật số lượng
+        cart.items[itemIndex].quantity += quantity
+      } else {
+        // Nếu sản phẩm chưa có trong giỏ hàng, thêm sản phẩm mới
+        cart.items.push({
+          productId: productId,
+          quantity: quantity,
+          price: product.price,
+        })
+      }
+      await cart.save()
       res.status(200).json({ status: 1 })
     } else res.status(400).json('Số lượng trong kho không đủ')
   } catch (error) {
@@ -147,25 +165,30 @@ const addProductToCart = async (req, res) => {
 
 // Xoá khỏi giỏ hàng
 const deleteProductOnCart = async (req, res) => {
-  const { cartId, userId } = req.body
+  const {cartId, productId, userId } = req.body
   try {
-    const user = await userModel.findById(userId)
-    const cart = user.cart.find((item) => item.id === cartId)
-    await user.updateOne({
-      $pull: {
-        cart: {
-          id: cartId,
-          // productId: cart.productId,
-          // title: cart.title,
-          // number: cart.number,
-          // price: cart.price,
+    const cart = await cartsModel.findOneAndUpdate(
+      { 
+        userId: userId,
+      },
+      {
+        $pull: { // Sử dụng $pull để xoá các phần tử trong mảng items
+          items: {
+            _id: cartId,
+          },
         },
       },
-    })
-    const product = await productModel.findById(cart.productId)
-    await product.updateOne({ number: product.number + cart.number })
+      { new: true }, // Trả về bản ghi mới sau khi đã cập nhật 
+    )
+    console.log(cart);
+    if (!cart) {
+      return res
+        .status(404)
+        .json({ status: 0, message: 'Không tìm thấy giỏ hàng' })
+    }
     res.status(200).json({ status: 1 })
   } catch (error) {
+    console.log(error);
     res.status(500).json(error)
   }
 }
@@ -293,4 +316,4 @@ module.exports = {
   getListOrder,
   getListOrderById,
   approveOrder,
-};
+}
