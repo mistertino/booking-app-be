@@ -9,6 +9,7 @@ const AuthRoute = require( './Routes/AuthRoute.js')
 const ProductRoute = require( './Routes/ProductRoute.js')
 const UserRoute = require( './Routes/UserRoute.js')
 const PaymentRoute = require( './Routes/PaymentRoute.js')
+const CategoryRoute = require( './Routes/CategoryRoute.js')
 
 const app = express()
 app.use(bodyParser.json({ limit: '30mb', extended: true }))
@@ -36,4 +37,5 @@ mongoose
 app.use('/auth', AuthRoute)
 app.use('/product', ProductRoute)
 app.use('/user', UserRoute)
+app.use('/category', CategoryRoute)
 app.use('/payment', PaymentRoute)

@@ -119,79 +119,7 @@ const getProduct = async (req, res) => {
   }
 }
 
-// Thêm vào giỏ hàng
-const addProductToCart = async (req, res) => {
-  const { productId, userId, quantity } = req.body
-  try {
-    const product = await productModel.findById(productId)
-    if (!product) {
-      return res.status(400).json('Không tồn tại sản phẩm')
-    }
-    // Kiểm tra xem giỏ hàng "active" của người dùng có tồn tại không
-    let cart = await cartsModel.findOne({ userId: userId, status: 'active' })
 
-    // Nếu không có giỏ hàng "active", tạo giỏ hàng mới
-    if (!cart) {
-      cart = new cartsModel({
-        userId: userId,
-        items: [],
-        status: 'active',
-      })
-    }
-    //  Kiểm tra sản phẩm còn trong kho không
-    if (product.stock > quantity) {
-      // Kiểm tra xem sản phẩm đã có trong giỏ hàng chưa
-      const itemIndex = cart.items.findIndex(
-        (item) => item.productId.toString() === productId,
-      )
-      if (itemIndex > -1) {
-        // Nếu sản phẩm đã có trong giỏ hàng, cập nhật số lượng
-        cart.items[itemIndex].quantity += quantity
-      } else {
-        // Nếu sản phẩm chưa có trong giỏ hàng, thêm sản phẩm mới
-        cart.items.push({
-          productId: productId,
-          quantity: quantity,
-          price: product.price,
-        })
-      }
-      await cart.save()
-      res.status(200).json({ status: 1 })
-    } else res.status(400).json('Số lượng trong kho không đủ')
-  } catch (error) {
-    res.status(500).json(error)
-  }
-}
-
-// Xoá khỏi giỏ hàng
-const deleteProductOnCart = async (req, res) => {
-  const {cartId, productId, userId } = req.body
-  try {
-    const cart = await cartsModel.findOneAndUpdate(
-      { 
-        userId: userId,
-      },
-      {
-        $pull: { // Sử dụng $pull để xoá các phần tử trong mảng items
-          items: {
-            _id: cartId,
-          },
-        },
-      },
-      { new: true }, // Trả về bản ghi mới sau khi đã cập nhật 
-    )
-    console.log(cart);
-    if (!cart) {
-      return res
-        .status(404)
-        .json({ status: 0, message: 'Không tìm thấy giỏ hàng' })
-    }
-    res.status(200).json({ status: 1 })
-  } catch (error) {
-    console.log(error);
-    res.status(500).json(error)
-  }
-}
 
 // Order sản phẩm
 const orderProduct = async (req, res) => {
@@ -310,8 +238,6 @@ module.exports = {
   updateProduct,
   deleteProduct,
   getProduct,
-  addProductToCart,
-  deleteProductOnCart,
   orderProduct,
   getListOrder,
   getListOrderById,

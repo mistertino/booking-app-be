@@ -8,9 +8,9 @@ const registerUser = async (req, res) => {
   req.body.password = hashedPass
   //Create new document
   const newUser = new userModel(req.body)
-  const { email } = req.body
+  const { username } = req.body
   try {
-    const oldUser = await userModel.findOne({ email })
+    const oldUser = await userModel.findOne({ username })
     // Check username already
     if (oldUser) {
       return res.status(400).json('Người dùng đã tồn tại')
@@ -28,7 +28,7 @@ const loginUser = async (req, res) => {
   const { username, password } = req.body
   const salt = await bcrypt.genSalt(10)
   try {
-    const userLogin = await userModel.findOne({ email: username })
+    const userLogin = await userModel.findOne({ username })
     if (userLogin) {
       //compare password input with password in database
       const verify = await bcrypt.compare(password, userLogin.password)

@@ -6,9 +6,11 @@ const UserSchema = new mongoose.Schema(
       type: String,
       require: true,
     },
-    email: {
+    firstname: {
       type: String,
-      require: true,
+    },
+    lastname: {
+      type: String,
     },
     password: {
       type: String,
@@ -18,7 +20,11 @@ const UserSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
-    cart: [],
+    staff: {
+      type: Boolean,
+      default: false,
+    },
+    listPermission: []
   },
   { timestamps: true },
 )
