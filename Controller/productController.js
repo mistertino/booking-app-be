@@ -8,7 +8,7 @@ const OrderModel = require('../models/orderModel.js')
 
 // Create Product
 const createProduct = async (req, res) => {
-  const { title, image, description, price, stock, category } = req.body
+  const { title, image, description, price, stock, category, categoryName } = req.body
   try {
     if (image) {
       const result = await cloudinary.uploader.upload(image, {
@@ -22,6 +22,7 @@ const createProduct = async (req, res) => {
         stock,
         image: { public_id: result.public_id, url: result.secure_url },
         category,
+        categoryName
       })
       await newProduct.save()
       res.status(200).json(newProduct)
@@ -37,12 +38,12 @@ const createProduct = async (req, res) => {
 
 // Update Product
 const updateProduct = async (req, res) => {
-  const { productId, title, description, price, stock, category } = req.body
+  const { productId, title, description, price, stock, category, categoryName } = req.body
   try {
     // const newProduct = new productModel(req.body)
     const product = await productModel.findByIdAndUpdate(
       productId,
-      { title, description, price, stock, category },
+      { title, description, price, stock, category, categoryName },
       { new: true },
     )
     // await newProduct.save()
