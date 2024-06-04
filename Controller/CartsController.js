@@ -4,7 +4,7 @@ const cartsModel = require('../models/cartsModel.js')
 
 // Thêm vào giỏ hàng
 const addProductToCart = async (req, res) => {
-  const { productId, userId, quantity } = req.body
+  const { productId, userId, quantity, size } = req.body
   try {
     const product = await productModel.findById(productId)
     if (!product) {
@@ -25,8 +25,9 @@ const addProductToCart = async (req, res) => {
     if (product.stock > quantity) {
       // Kiểm tra xem sản phẩm đã có trong giỏ hàng chưa
       const itemIndex = cart.items.findIndex(
-        (item) => item.productId.toString() === productId,
+        (item) => item.productId.toString() === productId && item.size === size,
       )
+
       if (itemIndex > -1) {
         // Nếu sản phẩm đã có trong giỏ hàng, cập nhật số lượng
         cart.items[itemIndex].quantity += quantity
@@ -35,7 +36,8 @@ const addProductToCart = async (req, res) => {
         cart.items.push({
           productId: productId,
           quantity: quantity,
-          price: product.price,
+          price: product.priceBySize[size],
+          size: size
         })
       }
       await cart.save()
@@ -64,7 +66,6 @@ const deleteProductOnCart = async (req, res) => {
       },
       { new: true }, // Trả về bản ghi mới sau khi đã cập nhật
     )
-    console.log(cart)
     if (!cart) {
       return res
         .status(404)
@@ -79,34 +80,35 @@ const deleteProductOnCart = async (req, res) => {
 
 // get giỏ hàng từ người dùng
 const getCartByUser = async (req, res) => {
-    try {
-      if (req && req.params.userId) {
-        let cart = await cartsModel
-          .findOne({
-            userId: req.params.userId,
-            status: 'active',
-          })
-          .populate('items.productId')
-        const result = cart.items.map((item) => {
-          return {
-            id: item?._id,
-            productId: item?.productId?._id,
-            title: item?.productId?.title || "",
-            price: item?.productId?.price || 0 ,
-            quantity: item?.quantity || 0,
-          }
+  try {
+    if (req && req.params.userId) {
+      let cart = await cartsModel
+        .findOne({
+          userId: req.params.userId,
+          status: 'active',
         })
-        res.status(200).json({ data: result })
-      } else {
-        res.status(404).json({ message: 'Không tìm thấy người dùng và giỏ hàng' })
-      }
-    } catch (error) {
-      res.status(500).json({ message: error.message })
+        .populate('items.productId')
+      const result = cart.items.map((item) => {
+        return {
+          id: item?._id,
+          productId: item?.productId?._id,
+          title: item?.productId?.title || '',
+          price: item?.price || 0,
+          quantity: item?.quantity || 0,
+          size: item?.size || ""
+        }
+      })
+      res.status(200).json({ data: result })
+    } else {
+      res.status(404).json({ message: 'Không tìm thấy người dùng và giỏ hàng' })
     }
+  } catch (error) {
+    res.status(500).json({ message: error.message })
   }
+}
 
 module.exports = {
   addProductToCart,
   deleteProductOnCart,
-  getCartByUser
+  getCartByUser,
 }
