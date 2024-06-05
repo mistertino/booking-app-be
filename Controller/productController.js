@@ -1,7 +1,6 @@
 const mongoose = require('mongoose')
 const cloudinary = require('../cloudinary/cloudinary.js')
 const productModel = require('../models/productModel.js')
-const cartsModel = require('../models/cartsModel.js')
 const userModel = require('../models/userModel.js')
 const { v4: uuid } = require('uuid')
 const OrderModel = require('../models/orderModel.js')
