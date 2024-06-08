@@ -1,6 +1,9 @@
 const cartsModel = require('../models/cartsModel.js')
 const productModel = require('../models/productModel.js')
 const OrderModel = require('../models/orderModel.js')
+const XLSX = require('xlsx');
+const fs = require('fs');
+const path = require('path');
 
 const createOrder = async (req, res) => {
   // Xử lý tạo đơn hàng trong db
@@ -208,10 +211,113 @@ const aggregateOrders = async (req, res) => {
   }
 }
 
+const aggregateAndDownload = async (req, res) => {
+  const { type } = req.query // Lấy tham số `type` từ query string
+
+  if (!type || !['day', 'month', 'year'].includes(type)) {
+    return res.status(400).send('Invalid type parameter');
+  }
+
+  let groupBy;
+  switch (type) {
+    case 'day':
+      groupBy = {
+        year: { $year: '$updatedAt' },
+        month: { $month: '$updatedAt' },
+        day: { $dayOfMonth: '$updatedAt' }
+      };
+      break;
+    case 'month':
+      groupBy = {
+        year: { $year: '$updatedAt' },
+        month: { $month: '$updatedAt' }
+      };
+      break;
+    case 'year':
+      groupBy = {
+        year: { $year: '$updatedAt' }
+      };
+      break;
+  }
+
+  try {
+    const pipeline = [
+      {
+        $match: {
+          status: 'finish'
+        }
+      },
+      {
+        $group: {
+          _id: groupBy,
+          totalAmount: { $sum: '$totalAmount' },
+          count: { $sum: 1 }
+        }
+      },
+      {
+        $sort: {
+          '_id.year': 1,
+          '_id.month': 1,
+          '_id.day': 1
+        }
+      }
+    ];
+    const result = await OrderModel.aggregate(pipeline)
+
+    // Chuyển đổi kết quả thành định dạng phù hợp cho file Excel
+    const data = result.map(item => {
+      let date;
+      if (type === 'day') {
+        date = `${item._id.day}/${item._id.month}/${item._id.year}`;
+      } else if (type === 'month') {
+        date = `${item._id.month}/${item._id.year}`;
+      } else if (type === 'year') {
+        date = `${item._id.year}`;
+      }
+      return [date,`${item.totalAmount} VNĐ`, `${item.count} Đơn`];
+    });
+
+    const title = [`Thống kê đơn hàng`];
+    const headers = ['Thời gian', 'Tổng tiền', 'Tổng đơn hàng'];
+
+    const worksheetData = [title, headers, ...data];
+
+    // Tạo một worksheet từ dữ liệu
+    const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
+
+    // Tạo một workbook mới và thêm worksheet vào
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Orders');
+
+    // Tạo file Excel tạm thời
+    const filePath = path.join(__dirname, 'KET_QUA_THONG_KE.xlsx');
+    XLSX.writeFile(workbook, filePath);
+
+    // Trả về file cho client
+    res.download(filePath, 'KET_QUA_THONG_KE.xlsx', (err) => {
+      if (err) {
+        console.error('Error downloading file', err);
+        res.status(500).send('Error downloading file');
+      }
+
+      // Xóa file tạm thời sau khi gửi
+      fs.unlink(filePath, (err) => {
+        if (err) {
+          console.error('Error deleting temporary file', err);
+        }
+      });
+    });
+  } catch (error) {
+    console.error('Error generating report', error)
+    res.status(500).json({ message: 'Error generating report' })
+  }
+}
+
 module.exports = {
   createOrder,
   getListOrder,
   getListOrderById,
   approveOrder,
-  aggregateOrders
+  aggregateOrders,
+  aggregateAndDownload
 }
