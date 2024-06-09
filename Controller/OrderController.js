@@ -203,7 +203,6 @@ const aggregateOrders = async (req, res) => {
       }
     ];
     const result = await OrderModel.aggregate(pipeline)
-    console.log(result)
     res.status(200).json({data: result})
   } catch (error) {
     console.error('Error generating report', error)

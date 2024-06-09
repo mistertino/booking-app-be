@@ -9,6 +9,7 @@ const cartItemSchema = new mongoose.Schema({
   quantity: { type: Number, required: true },
   price: { type: Number, required: true },
   size: { type: String, required: true },
+  title: { type: String, required: true },
 })
 
 const CartsSchema = new mongoose.Schema(

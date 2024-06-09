@@ -35,6 +35,7 @@ const addProductToCart = async (req, res) => {
         // Nếu sản phẩm chưa có trong giỏ hàng, thêm sản phẩm mới
         cart.items.push({
           productId: productId,
+          title: product.title,
           quantity: quantity,
           price: product.priceBySize[size],
           size: size
